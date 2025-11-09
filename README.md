@@ -1,0 +1,1 @@
+# graf-practica-integral-3D
