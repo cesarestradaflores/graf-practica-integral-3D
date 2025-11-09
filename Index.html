@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Survival 3D</title>
+    
+    <!-- Audio para la música de inicio -->
+    <audio id="intro-music" loop>
+        <source src="Recursos/IntroJuego.mp3" type="audio/mpeg">
+        Tu navegador no soporta el elemento de audio.
+    </audio>
+    
+    <!-- Audio para la música del juego (Subway Surfers) -->
+    <audio id="game-music" loop>
+        <source src="Recursos/SubwaySurfers.mp3" type="audio/mpeg">
+        Tu navegador no soporta el elemento de audio.
+    </audio>
+    
+    <style>
+        /* Estilos básicos para la página y el juego */
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+
+        /* El lienzo de Three.js ocupará toda la pantalla */
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Contenedor para la interfaz de usuario (UI) */
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            
+            background-color: transparent;
+            padding: 10px 25px;
+            border-radius: 12px;
+            
+            font-size: 26px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,1);
+            
+            display: none;
+            white-space: nowrap;
+        }
+
+        #score, #distance {
+            display: inline-block;
+            margin: 0 15px;
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 5px 15px;
+            border-radius: 8px;
+        }
+
+        /* Botón de pausa */
+        #pause-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #00FF41;
+            color: #00FF41;
+            font-size: 1.5rem;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: none;
+            transition: all 0.3s ease;
+        }
+
+        #pause-button:hover {
+            background: rgba(0, 255, 65, 0.2);
+            transform: scale(1.05);
+        }
+
+        /* Menú de pausa */
+        #pause-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 102;
+            background: rgba(10, 10, 10, 0.95);
+            border: 3px solid #00FF41;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            display: none;
+            min-width: 400px;
+            box-shadow: 0 0 40px rgba(0, 255, 65, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .pause-title {
+            color: #00FF41;
+            font-size: 2.5rem;
+            margin-bottom: 25px;
+            text-shadow: 0 0 10px #00FF41;
+        }
+
+        .pause-button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            background: linear-gradient(135deg, #00FF41 0%, #008800 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pause-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 255, 65, 0.4);
+        }
+
+        .pause-button:active {
+            transform: translateY(0);
+        }
+
+        /* Controles de audio */
+        .audio-controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 255, 65, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #00FF41;
+        }
+
+        .audio-slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        /* Pantalla de configuración */
+        #settings-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 103;
+            background: rgba(10, 10, 10, 0.95);
+            border: 3px solid #FFD700;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            display: none;
+            min-width: 450px;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.5);
+            backdrop-filter: blur(10px);
+
+            max-height: 90vh;      /* Altura máxima: 90% de la altura de la ventana */
+            overflow-y: auto;        /* Añade scroll vertical SÓLO si es necesario */
+            margin-top: 5vh;         /* Un pequeño margen superior */
+            box-sizing: border-box;  /* Asegura que el padding no cause problemas */
+        }
+
+        .settings-title {
+            color: #FFD700;
+            font-size: 2.5rem;
+            margin-bottom: 25px;
+            text-shadow: 0 0 10px #FFD700;
+        }
+
+        .settings-section {
+            text-align: left;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #FFD700;
+        }
+
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0;
+        }
+
+        .settings-label {
+            font-size: 1.2rem;
+            color: #ffffff;
+        }
+
+        .settings-toggle {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+        }
+
+        .settings-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .settings-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .settings-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .settings-slider {
+            background-color: #00FF41;
+        }
+
+        input:checked + .settings-slider:before {
+            transform: translateX(30px);
+        }
+
+        /* Pantalla de créditos */
+        #credits-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 104;
+            background: rgba(10, 10, 10, 0.95);
+            border: 3px solid #007bff;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            display: none;
+            min-width: 500px;
+            box-shadow: 0 0 40px rgba(0, 123, 255, 0.5);
+            backdrop-filter: blur(10px);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .credits-title {
+            color: #007bff;
+            font-size: 2.5rem;
+            margin-bottom: 25px;
+            text-shadow: 0 0 10px #007bff;
+        }
+
+        .credits-section {
+            margin: 25px 0;
+            text-align: left;
+        }
+
+        .credits-section-title {
+            color: #007bff;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+
+        .credits-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 123, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .credits-name {
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .credits-role {
+            color: #cccccc;
+            font-style: italic;
+        }
+
+        /* Mensaje de Game Over */
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 101;
+            color: #ff4444;
+            font-size: 3.5rem;
+            font-weight: 800;
+            text-align: center;
+            text-shadow: 0 0 20px rgba(255, 68, 68, 0.7), 0 0 40px rgba(255, 68, 68, 0.4);
+            display: none;
+            padding: 40px 60px;
+            background: rgba(10, 10, 10, 0.95);
+            border-radius: 12px;
+            border: 3px solid #ff4444;
+            box-shadow: 0 0 60px rgba(255, 68, 68, 0.4);
+            backdrop-filter: blur(10px);
+            min-width: 500px;
+            box-sizing: border-box;
+            animation: gameOverAppear 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes gameOverAppear {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            70% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.05);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .game-over-stats {
+            margin: 25px 0;
+            padding: 20px;
+            background: rgba(255, 68, 68, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #ff4444;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 12px 0;
+            font-size: 1.2rem;
+            color: #ffffff;
+        }
+
+        .stat-label {
+            font-weight: 600;
+            color: #cccccc;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: #ff4444;
+            font-size: 1.3rem;
+        }
+
+        /* Botón de reinicio */
+        #restart-button {
+            margin-top: 25px;
+            padding: 16px 40px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: white;
+            background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 68, 68, 0.3);
+            transition: all 0.3s ease;
+            display: block;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #restart-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 68, 68, 0.4);
+            background: linear-gradient(135deg, #ff5555 0%, #dd0000 100%);
+        }
+
+        #restart-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(255, 68, 68, 0.3);
+        }
+
+        #restart-button::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        #restart-button:hover::after {
+            left: 100%;
+        }
+
+        /* Modal de inicio */
+        #modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(10,10,10,0.95) 0%, rgba(26,26,46,0.95) 100%);
+            z-index: 150;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        #rules-modal {
+            position: relative;
+            background: linear-gradient(145deg, #0a0a0a 0%, #1a1a2e 100%);
+            border: 3px solid #00FF41;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 0 50px #00FF41;
+            animation: pulse 2s infinite;
+
+            max-height: 90vh;      /* Altura máxima: 90% de la altura de la ventana */
+            overflow-y: auto;        /* Añade scroll vertical SÓLO si es necesario */
+            margin-top: 5vh;         /* Un pequeño margen superior (5% de la altura) */
+            box-sizing: border-box;/* Asegura que el padding no cause problemas */
+        }
+
+        /* Botón sonido mute */
+        .menu-mute-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid #00FF41;
+            color: white;
+            font-size: 1.5rem;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 151;
+        }
+
+        .menu-mute-button:hover {
+            background: rgba(0, 255, 65, 0.4);
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 30px #00FF41; }
+            50% { box-shadow: 0 0 60px #00FF41; }
+            100% { box-shadow: 0 0 30px #00FF41; }
+        }
+
+        .game-logo {
+            width: 180px;
+            height: auto;
+            margin-bottom: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+            border: 2px solid #00FF41;
+        }
+
+        .game-title {
+            color: #00FF41;
+            font-size: 2.8rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00FF41, 0 0 20px #00FF41;
+            margin-bottom: 10px;
+            line-height: 1.1;
+        }
+
+        .game-subtitle {
+            color: white;
+            font-size: 1.4rem;
+            margin-bottom: 30px;
+            text-shadow: 0 0 5px rgba(0,255,65,0.5);
+            line-height: 1.3;
+        }
+
+        .controls-section {
+            text-align: left;
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            color: #00FF41;
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 2px solid #00FF41;
+            padding-bottom: 8px;
+        }
+
+        .control-item {
+            display: flex;
+            align-items: center;
+            margin: 12px 0;
+            font-size: 1.3rem;
+            padding: 8px 15px;
+            background: rgba(0, 255, 65, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid #00FF41;
+            transition: all 0.3s ease;
+        }
+
+        .control-item:hover {
+            background: rgba(0, 255, 65, 0.2);
+            transform: translateX(5px);
+        }
+
+        .control-keys {
+            display: flex;
+            gap: 5px;
+            margin-right: 15px;
+        }
+
+        .key {
+            background: rgba(0, 255, 65, 0.3);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            min-width: 30px;
+            text-align: center;
+            border: 1px solid #00FF41;
+            box-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+        }
+
+        .points-info {
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid #FFD700;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 1.2rem;
+            color: #FFD700;
+            text-align: center;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .warning-box {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #FF0000;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+        }
+
+        .warning-icon {
+            color: #FF0000;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .warning-text {
+            color: #FF0000;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        #start-game-button {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            color: white;
+            background: linear-gradient(135deg, #00FF00 0%, #008800 100%);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 255, 0, 0.3);
+            transition: all 0.3s ease;
+            width: 100%;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #start-game-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 255, 0, 0.5);
+            background: linear-gradient(135deg, #008800 0%, #00FF00 100%);
+        }
+
+        #start-game-button:active {
+            transform: translateY(-1px);
+        }
+
+        /* Botones adicionales en el menú principal */
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .menu-button {
+            padding: 12px 20px;
+            font-size: 1.2rem;
+            color: white;
+            background: rgba(0, 255, 65, 0.2);
+            border: 2px solid #00FF41;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .menu-button:hover {
+            background: rgba(0, 255, 65, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Pantalla de carga y error */
+        #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #loading-bar-container {
+            width: 80%;
+            max-width: 400px;
+            height: 30px;
+            background-color: #333;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        #loading-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+        }
+        
+        #error-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(26, 0, 0, 0.9);
+            z-index: 199;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #ff4136;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #error-screen h2 {
+            margin-top: 0;
+        }
+        #error-screen code {
+            background-color: #333;
+            color: #eee;
+            padding: 10px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-top: 15px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .game-logo {
+                width: 140px;
+            }
+            
+            .game-title {
+                font-size: 2.2rem;
+            }
+            
+            .game-subtitle {
+                font-size: 1.2rem;
+            }
+            
+            .control-item {
+                font-size: 1.1rem;
+            }
+            
+            #rules-modal {
+                padding: 30px 20px;
+                margin: 20px;
+            }
+            
+            #game-over {
+                font-size: 2.5rem;
+                min-width: 90%;
+                padding: 30px 20px;
+            }
+            
+            .stat-item {
+                font-size: 1rem;
+            }
+            
+            .stat-value {
+                font-size: 1.1rem;
+            }
+            
+            #pause-menu, #settings-screen, #credits-screen {
+                min-width: 90%;
+                padding: 20px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Pantalla de Carga -->
+    <div id="loading-screen">
+        <h2>Cargando Recursos...</h2>
+        <div id="loading-bar-container">
+            <div id="loading-bar"></div>
+        </div>
+        <div id="loading-text">0%</div>
+    </div>
+    
+    <!-- Modal de Inicio (cubre el juego al inicio) -->
+    <div id="modal-overlay">
+        <div id="rules-modal">
+            <button id="intro-mute-button" class="menu-mute-button">🔇</button>
+            <!-- Logo del juego -->
+            <img src="Recursos/LOGOZS.jpg" alt="Zombie Survival 3D" class="game-logo">
+            
+            <div class="game-title">ZOMBIE SURVIVAL 3D</div>
+            <div class="game-subtitle">¡Corre, salta y esquiva para sobrevivir!</div>
+            
+            <div class="controls-section">
+                <div class="section-title">CONTROLES</div>
+                
+                <div class="control-item">
+                    <div class="control-keys">
+                        <span class="key">←</span>
+                        <span class="key">→</span>
+                    </div>
+                    <span>Moverse entre carriles</span>
+                </div>
+                
+                <div class="control-item">
+                    <div class="control-keys">
+                        <span class="key">↑</span>
+                        <span class="key">Espacio</span>
+                    </div>
+                    <span>Saltar obstáculos</span>
+                </div>
+                
+                <div class="control-item">
+                    <div class="control-keys">
+                        <span class="key">↓</span>
+                    </div>
+                    <span>Rodar para esquivar</span>
+                </div>
+
+                <div class="control-item">
+                    <div class="control-keys">
+                        <span class="key">ESC</span>
+                    </div>
+                    <span>Pausar el juego</span>
+                </div>
+                
+            </div>
+            
+            <div class="points-info">
+                Cada moneda recolectada te da 10 puntos.
+            </div>
+            
+            <div class="warning-box">
+                <span class="warning-icon">⚠️</span>
+                <span class="warning-text">¡ADVERTENCIA! La velocidad aumenta con el tiempo</span>
+            </div>
+            
+            <button id="start-game-button">START GAME</button>
+            
+            <!-- NUEVO: Botones adicionales en el menú principal -->
+            <div class="menu-buttons">
+                <button id="credits-button" class="menu-button">CRÉDITOS</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Botón de pausa -->
+    <button id="pause-button">⏸️ PAUSA</button>
+    
+    <!-- Menú de pausa -->
+    <div id="pause-menu">
+        <div class="pause-title">JUEGO EN PAUSA</div>
+        
+        <div class="audio-controls">
+            <h3>CONTROLES DE AUDIO</h3>
+            <div class="settings-item">
+                <span class="settings-label">Música:</span>
+                <input type="range" class="audio-slider" id="music-volume" min="0" max="100" value="30">
+            </div>
+            <div class="settings-item">
+                <span class="settings-label">Efectos:</span>
+                <input type="range" class="audio-slider" id="sfx-volume" min="0" max="100" value="50">
+            </div>
+        </div>
+        
+        <button id="resume-button" class="pause-button">REANUDAR JUEGO</button>
+        <button id="restart-from-pause" class="pause-button">REINICIAR</button>
+        <button id="main-menu-from-pause" class="pause-button">MENÚ PRINCIPAL</button>
+    </div>
+    
+    <!-- Pantalla de créditos -->
+    <div id="credits-screen">
+        <div class="credits-title">CRÉDITOS</div>
+        
+        <div class="credits-section">
+            <div class="credits-section-title">DESARROLLADORES</div>
+            <div class="credits-item">
+                <div class="credits-name">Cesar Estrada Flores</div>
+                <div class="credits-role">NC: 23200832 - Director de Proyecto & Programador Principal</div>
+            </div>
+            <div class="credits-item">
+                <div class="credits-name">Enrique Gomez Orta</div>
+                <div class="credits-role">NC: 23200842 - Director de Proyecto & Programador Principal</div>
+            </div>
+            <div class="credits-item">
+                <div class="credits-name">José David Martínez Badillo</div>
+                <div class="credits-role">NC: 23200995 - Director de Proyecto & Programador Principal</div>
+            </div>
+        </div>
+        
+        <div class="credits-section">
+            <div class="credits-section-title">TECNOLOGÍAS UTILIZADAS</div>
+            <div class="credits-item">
+                <div class="credits-name">Three.js</div>
+                <div class="credits-role">Motor de gráficos 3D</div>
+            </div>
+            <div class="credits-item">
+                <div class="credits-name">WebGL</div>
+                <div class="credits-role">API de renderizado</div>
+            </div>
+            <div class="credits-item">
+                <div class="credits-name">HTML5 & CSS3</div>
+                <div class="credits-role">Interfaz de usuario</div>
+            </div>
+            <div class="credits-item">
+                <div class="credits-name">JavaScript ES6+</div>
+                <div class="credits-role">Lógica del juego</div>
+            </div>
+        </div>
+        
+        <div class="credits-section">
+            <div class="credits-section-title">AGRADECIMIENTOS ESPECIALES</div>
+            <div class="credits-item">
+                <div class="credits-name">Instituto Tecnológico De Pachuca</div>
+                <div class="credits-role">Departamento de Sistemas Computacionales</div>
+            </div>
+            <div class="credits-item">
+                <div class="credits-name">Comunidad Three.js</div>
+                <div class="credits-role">Por su invaluable documentación y ejemplos</div>
+            </div>
+        </div>
+        
+        <button id="back-from-credits" class="pause-button">VOLVER</button>
+    </div>
+    
+    <!-- Pantalla de Error (oculta) -->
+    <div id="error-screen">
+        <h2>Error al Cargar Recursos (CORS)</h2>
+        <p>El navegador bloqueó la carga de archivos locales por seguridad.</p>
+        <p><b>Solución:</b> Ejecuta este archivo usando un servidor local.</p>
+        <p>Si usas <b>Visual Studio Code</b>, instala la extensión "<b>Live Server</b>" y haz clic derecho en `index.html` -> "<b>Open with Live Server</b>".</p>
+        <code>python -m http.server</code>
+    </div>
+    
+    <!-- Contenedor de la UI (oculto al inicio) -->
+    <div id="ui-container">
+        <div id="score">Puntos: 0</div>
+        <div id="distance">Distancia: 0m</div>
+    </div>
+
+    <!-- Mensaje de Game Over -->
+    <div id="game-over">
+        <div style="margin-bottom: 30px;">¡Atrapado por los zombies!</div>
+        
+        <div class="game-over-stats">
+            <div class="stat-item">
+                <span class="stat-label">Puntuación Final:</span>
+                <span class="stat-value" id="final-score">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Distancia Recorrida:</span>
+                <span class="stat-value" id="final-distance">0m</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Monedas Recolectadas:</span>
+                <span class="stat-value" id="final-coins">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Tiempo de Supervivencia:</span>
+                <span class="stat-value" id="final-time">0s</span>
+            </div>
+        </div>
+        
+        <button id="restart-button">REINICIAR JUEGO</button>
+        <button id="main-menu-from-gameover" class="pause-button" style="margin-top: 10px;">MENÚ PRINCIPAL</button>
+    </div>
+
+    <!-- IMPORT MAP: Le dice al navegador dónde encontrar los módulos "three" y "three/addons/". -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+            }
+        }
+    </script>
+
+    <!-- 
+      SCRIPT PRINCIPAL:
+      Este es el punto de entrada. Llama a 'src/main.js',
+    -->
+    <script type="module" src="src/main.js"></script>
+
+    <!-- Script para manejar la interfaz mejorada y música -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Control de música de inicio y juego
+            const introMusic = document.getElementById('intro-music');
+            const gameMusic = document.getElementById('game-music');
+            const startButton = document.getElementById('start-game-button');
+            const muteButton = document.getElementById('intro-mute-button');
+            
+            // Configurar y reproducir música de inicio
+            if (introMusic) {
+                introMusic.volume = 0.3;
+                introMusic.muted = true; // Empezar silenciado por defecto
+
+                // Intentar reproducir
+                introMusic.play().catch(e => {
+                    console.log('Reproducción automática bloqueada. Esperando clic en botón de mute.');
+                });
+
+                // Lógica botón de Mute
+                muteButton.addEventListener('click', function() {
+                    if (introMusic.muted) {
+                        introMusic.muted = false;
+                        introMusic.play(); // Asegurarse de que suene
+                        muteButton.textContent = '🔊';
+                    } else {
+                        introMusic.muted = true;
+                        muteButton.textContent = '🔇';
+                    }
+                });
+            }
+            
+            // Configurar música del juego
+            if (gameMusic) {
+                gameMusic.volume = 0.3;
+                gameMusic.loop = true;
+            }
+            
+            // Iniciar juego y cambiar música
+            if (startButton) {
+                startButton.addEventListener('click', function() {
+                    console.log('START GAME presionado - Cambiando música');
+                    
+                    // Detener música de inicio
+                    if (introMusic) {
+                        introMusic.pause();
+                        introMusic.currentTime = 0;
+                        console.log('Música de inicio detenida');
+                    }
+                    
+                    // Ocultar menú principal
+                    document.getElementById('modal-overlay').style.display = 'none';
+                    
+                    // Iniciar el juego
+                    if (window.game && window.game.startGame) {
+                        window.game.startGame();
+                    } else {
+                        console.log('Game object not found, showing UI manually');
+                        // Mostrar UI del juego manualmente
+                        document.getElementById('ui-container').style.display = 'block';
+                        document.getElementById('pause-button').style.display = 'block';
+                    }
+                });
+            }
+
+            // Referencias a los elementos
+            const pauseButton = document.getElementById('pause-button');
+            const pauseMenu = document.getElementById('pause-menu');
+            const resumeButton = document.getElementById('resume-button');
+            const restartFromPause = document.getElementById('restart-from-pause');
+            const settingsFromPause = document.getElementById('settings-from-pause');
+            const mainMenuFromPause = document.getElementById('main-menu-from-pause');
+            
+            const creditsButton = document.getElementById('credits-button');
+            const creditsScreen = document.getElementById('credits-screen');
+            const backFromCredits = document.getElementById('back-from-credits');
+            
+            const mainMenuFromGameover = document.getElementById('main-menu-from-gameover');
+            const restartButton = document.getElementById('restart-button');
+            
+            // Función para pausar el juego
+            function pauseGame() {
+                if ((window.game && window.game.isGameStarted && !window.game.isGameOver) || 
+                    (!window.game && document.getElementById('ui-container').style.display === 'block')) {
+                    pauseMenu.style.display = 'block';
+                    // Pausar música del juego
+                    if (gameMusic && !gameMusic.paused) {
+                        gameMusic.pause();
+                        console.log('Música del juego pausada');
+                    }
+
+                    if (window.game) {
+                        window.game.isPaused = true;
+                        window.game.clock.stop(); // Detiene el reloj del juego
+                    }
+                }
+            }
+            
+            // Función para reanudar el juego
+            function resumeGame() {
+                pauseMenu.style.display = 'none';
+                // Reanudar música del juego
+                if (gameMusic && gameMusic.paused) {
+                    gameMusic.play().catch(e => {
+                        console.log('Error al reanudar música del juego:', e);
+                    });
+                    console.log('Música del juego reanudada');
+
+                    if (window.game) {
+                        window.game.isPaused = false;
+                        window.game.clock.start(); // Reanuda el reloj (resetea el delta)
+                    }
+                }
+            }
+            
+            // Event listeners para los botones de pausa
+            pauseButton.addEventListener('click', pauseGame);
+            resumeButton.addEventListener('click', resumeGame);
+            
+            // Event listener para la tecla ESC para pausar
+            document.addEventListener('keydown', function(event) {
+                if (event.code === 'Escape') {
+                    const uiVisible = document.getElementById('ui-container').style.display === 'block';
+                    const gameStarted = window.game ? window.game.isGameStarted : uiVisible;
+                    const gameOver = window.game ? window.game.isGameOver : false;
+                    
+                    if (gameStarted && !gameOver) {
+                        if (pauseMenu.style.display === 'block') {
+                            resumeGame();
+                        } else {
+                            pauseGame();
+                        }
+                    }
+                }
+            });
+            
+            // Navegación entre pantallas
+            creditsButton.addEventListener('click', function() {
+                document.getElementById('modal-overlay').style.display = 'none';
+                creditsScreen.style.display = 'block';
+            });
+            
+            backFromCredits.addEventListener('click', function() {
+                creditsScreen.style.display = 'none';
+                // Si estamos en el menú principal, volver a él
+                if (!window.game || !window.game.isGameStarted) {
+                    document.getElementById('modal-overlay').style.display = 'flex';
+                    // Reanudar música de inicio si estamos volviendo al menú
+                    if (introMusic && introMusic.paused) {
+                        introMusic.play().catch(e => console.log('Error al reanudar música:', e));
+                    }
+                }
+            });
+            
+            // Reiniciar desde el menú de pausa
+            restartFromPause.addEventListener('click', function() {
+                // Reiniciar música del juego
+                if (gameMusic) {
+                    gameMusic.currentTime = 0;
+                    gameMusic.play().catch(e => {
+                        console.log('Error al reproducir música del juego:', e);
+                    });
+                }
+
+                // "Des-pausa" el juego antes de reiniciar
+                if (window.game) {
+                    window.game.isPaused = false;
+                    window.game.clock.start(); 
+                }
+
+                if (window.game && window.game.restartGame) {
+                    window.game.restartGame();
+                }
+                pauseMenu.style.display = 'none';
+            });
+            
+            // Reiniciar desde game over
+            restartButton.addEventListener('click', function() {
+                // Reiniciar música del juego
+                if (gameMusic) {
+                    gameMusic.currentTime = 0;
+                    gameMusic.play().catch(e => {
+                        console.log('Error al reproducir música del juego:', e);
+                    });
+                }
+                
+                if (window.game && window.game.restartGame) {
+                    window.game.restartGame();
+                }
+                document.getElementById('game-over').style.display = 'none';
+            });
+            
+            // Volver al menú principal desde pausa
+            mainMenuFromPause.addEventListener('click', function() {
+                // Llamar a la función de reseteo central en Game.js
+                if (window.game && window.game.resetToMainMenu) {
+                    window.game.resetToMainMenu();
+                    console.log('Volviendo al menú principal desde pausa...');
+                } else {
+                    console.error("Error: no se pudo encontrar window.game.resetToMainMenu()");
+                }
+            });
+            
+            // Volver al menú principal desde game over
+            mainMenuFromGameover.addEventListener('click', function() {
+                if (window.game && window.game.resetToMainMenu) {
+                    window.game.resetToMainMenu();
+                } else {
+                    // Fallback si el método no existe
+                    console.log("Usando fallback para menú principal...");
+                    document.getElementById('game-over').style.display = 'none';
+                    document.getElementById('modal-overlay').style.display = 'flex';
+                    document.getElementById('ui-container').style.display = 'none';
+                    document.getElementById('pause-button').style.display = 'none';
+                    
+                    // Reiniciar música
+                    const introMusic = document.getElementById('intro-music');
+                    const gameMusic = document.getElementById('game-music');
+                    if (gameMusic) {
+                        gameMusic.pause();
+                        gameMusic.currentTime = 0;
+                    }
+                    if (introMusic) {
+                        introMusic.currentTime = 0;
+                        introMusic.play().catch(e => console.log('Error audio:', e));
+                    }
+                    
+                    // Resetear estado del juego
+                    if (window.game) {
+                        window.game.isGameStarted = false;
+                        window.game.isGameOver = false;
+                    }
+                }
+                console.log('Volviendo al menú principal desde game over');
+            });
+            
+            // Control de volumen
+            const musicVolume = document.getElementById('music-volume');
+            const sfxVolume = document.getElementById('sfx-volume');
+            
+            musicVolume.addEventListener('input', function() {
+                const volume = this.value / 100;
+
+                // Controlar volumen de música de inicio
+                if (introMusic) {
+                    introMusic.volume = volume;
+                }
+
+                // Controlar volumen de música del juego
+                if (window.game && window.game.backgroundMusic) {
+                    window.game.backgroundMusic.setVolume(volume);
+                }
+            });
+            
+            sfxVolume.addEventListener('input', function() {
+                const sfxVol = this.value / 100;
+
+                // Aplica el volumen al sonido de monedas
+                if (window.game && window.game.coinSound) {
+                    window.game.coinSound.setVolume(sfxVol);
+                }
+
+                // APLICA TAMBIÉN EL VOLUMEN AL SONIDO DE POWER-UP
+                if (window.game && window.game.powerUpSound) {
+                    window.game.powerUpSound.setVolume(sfxVol);
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
